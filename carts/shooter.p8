@@ -2,8 +2,27 @@ pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
 
+actors = {}
 t=0
 player_one = 0
+
+function add_ship()
+  ship = {}
+  ship.moving = false
+  ship.x = 40
+  ship.y = 60
+  facing_sprites = { 
+      left  = { 3, 4 },
+      right = { 19, 20 },
+      up    = { 21, 22 },
+      down  = { 5, 6 }
+      } 
+
+  add(actors, ship)
+
+  return ship
+end
+
 function _init()
   ship = { 
     moving = false,
@@ -138,7 +157,7 @@ function _draw()
 end
 
 
-
+-- http://pico-8.wikia.com/wiki/Draw_zoomed_sprite_(zspr)
 -- zspr
 -- arguments:
 -- --n: standard sprite number
