@@ -12,27 +12,27 @@ function _init()
     x = 40, 
     y = 60, 
     facing_sprites = { 
-      left =  {3,4},
-      right = {19,20},
-      up =    {3,4},
-      down =  {3,4}
+      left  = { 3, 4 },
+      right = { 19, 20 },
+      up    = { 21, 22 },
+      down  = { 5, 6 }
       } 
     }
+
 end
 
 function character_sprite(character, time_point)
   if (character.facing == "left") then
-    animation_set = { 3, 4 }
+    animation_set = character.facing_sprites.left
   elseif (character.facing == "right") then
-    animation_set = { 19,20 }
+    animation_set = character.facing_sprites.right
   elseif (character.facing == "up") then
-    animation_set = { 21, 22 }
+    animation_set = character.facing_sprites.up
   elseif (character.facing == "down") then
-    animation_set = { 5, 6 }
+    animation_set = character.facing_sprites.down
   else
   end
 
-  -- animation_set = character.facing_sprites[character.facing]
   if (time_point % 10 < 5) then
     new_sprite = animation_set[1]
   else 
