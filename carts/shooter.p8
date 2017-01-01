@@ -12,23 +12,23 @@ function _init()
     x = 40, 
     y = 60, 
     facing_sprites = { 
-      left = {3,4},
+      left =  {3,4},
       right = {19,20},
-      up = {3,4},
-      down = {3,4}
+      up =    {3,4},
+      down =  {3,4}
       } 
     }
 end
 
 function character_sprite(character, time_point)
   if (character.facing == "left") then
-    animation_set = { 3, 4}
+    animation_set = { 3, 4 }
   elseif (character.facing == "right") then
-    animation_set = {19,20}
+    animation_set = { 19,20 }
   elseif (character.facing == "up") then
-    animation_set = { 21, 22}
+    animation_set = { 21, 22 }
   elseif (character.facing == "down") then
-    animation_set = { 5, 6}
+    animation_set = { 5, 6 }
   else
   end
 
@@ -36,7 +36,7 @@ function character_sprite(character, time_point)
   if (time_point % 10 < 5) then
     new_sprite = animation_set[1]
   else 
-    new_sprite =  animation_set[2]
+    new_sprite = animation_set[2]
   end
   
   if (character.moving == false) then
@@ -79,7 +79,12 @@ function character_directional_movement(character, player_id)
     new_moving = true
   end
   
-  return { x = new_x, y = new_y, facing = new_facing, moving = new_moving }
+  return { 
+    x = new_x, 
+    y = new_y, 
+    facing = new_facing, 
+    moving = new_moving 
+    }
 end
 
 function _update()
@@ -90,7 +95,7 @@ function _update()
  
 
   new_ship_pos = character_directional_movement(ship, player_one)
-   ship.sp = character_sprite(ship, t)
+  ship.sp = character_sprite(ship, t)
   ship.x = new_ship_pos.x
   ship.y = new_ship_pos.y
   ship.facing = new_ship_pos.facing
