@@ -46,7 +46,7 @@ function _init()
     -- v = rnd(16) + (n%16) + 16
     if (i%8 == 0) then v = flr((rnd(8) * 8) + 8) end
     -- if (i%8 == 0) then v = 20 + flr(rnd(4)) end
-    v = 20 + flr(rnd(4))
+    v = 40 + flr(rnd(4))
     -- v = noise(i, 64, 64)
     terrain[i..""] = v
     -- add(terrain, v )
@@ -237,65 +237,41 @@ end
 
 
 
-
 function _draw()
   cls()
-  -- sky
-  rectfill(0,0,128,128,7)
-  -- print_debug_table(terrain, 10, 5, 0)
+  draw_sky()
 
-  for tx, ty in pairs(terrain) do
-    rectfill(tx, 128-ty, tx+1, 128, 3)
-  end
+  draw_terrain(terrain)
 
-
-
-
+  -- DEBUG STUFF
   -- rect(63, 63, 65, 65, 10)
-  print(pget(64,64), 64, 0, 6)
+  -- print(pget(64,64), 64, 0, 6)
   print(player_tank.tur_angle, 128-20, 0, 6)
   -- print(atan2(0, player_tank.tur_angle))
   
   draw_tank(player_tank)
-
-
-
-
-
-  
-  -- rectfill(0, 128-y, 100, y, 14)
--- print(y, 10, 10, 10)
-
   draw_bullet(bullet)
-
-
-  -- if bullet then
-  --   bos = 0
-  --   for k,v in pairs(bullet) do
-
-  --     print(k .. " => " .. v, 0, 64+(bos*6), 6)
-  --     bos += 1
-  --   end
-  --   -- print(bullet.x, 0, 64, 3)
-  --   -- print(bullet.y, 0, 64+6, 3)
-  --   -- print(bullet.vx, 0, 64+12, 3)
-  --   -- print(bullet.vy, 0, 64+18, 3)
-  --   box_around(bullet.x, bullet.y, 1, 9)
-  -- end
-
 
   if explosion then    
     draw_explosion(explosion)
-    print(explosion.t, 0,0,6)
-  else
-    print("safe", 0,0,6)
   end
-
-  -- print(terrain[""..player_tank.y], 10, 10, 10)
-  -- print 
 
   pal()
 end
+
+
+
+
+function draw_sky()
+  rectfill(0,0,128,128,7)
+end
+
+function draw_terrain(t)
+  for tx, ty in pairs(t) do
+    rectfill(tx, 128-ty, tx+1, 128, 3)
+  end
+end
+
 
 function draw_explosion(e)
   if debug_bounding then 
