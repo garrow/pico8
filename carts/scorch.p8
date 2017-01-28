@@ -2,11 +2,12 @@ pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
 -- TODO 
+-- Terrain destruction
+-- Tank Damage
 -- Make the terrain gen more lifelike
 -- Fix shot physics vertical angles
 -- Make shots land at the point of impact on the terrain, not the top.
 -- Track tank movement against terrain better
--- Terrain destruction
 -- Expand game world to wider than screen
 -- Add edge of screen as danger. Water pit or whatever
 -- Multiple shots and explosions at once
@@ -28,6 +29,33 @@ conf.gravity = 0.3
 
 player_tank = nil
 
+function make_terrain(something)
+
+  tn = {}
+  n = 128
+  last = 64
+  -- v = 64
+  for i=0,n do
+    -- last = 128/2
+    -- v = rnd(16) + (n%16) + 16
+    -- if (i%8 == 0) then v = flr((rnd(8) * 8) + 8) end
+    -- if (i%8 == 0) then v = 20 + flr(rnd(4)) end
+    v = something + flr(rnd(4))
+    -- v = clamp(rnd(40), 10, 35)
+    -- v = noise(i, 64, 64)
+    tn[i..""] = v
+    -- add(terrain, v )
+    last = v
+  end
+
+  return tn
+end
+
+function clamp(v, mn, mx)
+  return max(mn, min(v, mx))
+end
+
+
 
 function _init()
   -- srand(33)
@@ -36,22 +64,12 @@ function _init()
 
   bullet = nil
   explosion = nil
+  terrain = make_terrain(40)
 
-  terrain = {}
-  n = 128
-  last = 64
-  -- v = 64
-  for i=0,n do
-    -- last = 128/2
-    -- v = rnd(16) + (n%16) + 16
-    if (i%8 == 0) then v = flr((rnd(8) * 8) + 8) end
-    -- if (i%8 == 0) then v = 20 + flr(rnd(4)) end
-    v = 40 + flr(rnd(4))
-    -- v = noise(i, 64, 64)
-    terrain[i..""] = v
-    -- add(terrain, v )
-    last = v
-  end
+  circle = generate_circle(11, 40, 40)
+
+
+
 
   player_tank = make_tank()
 
@@ -88,11 +106,13 @@ function _update()
   if explosion then
     if not time_paused then
       explosion = tick_explosion(explosion)
+      terrain = apply_terrain_destruction(terrain, explosion)
+
     end
   else 
     if not bullet and firing then 
       bullet = simple_shoot(player_tank)  
-      -- explosion = explodey(player_tank.x, player_tank.y) 
+      -- explosion = spawn_explosion(player_tank.x, player_tank.y) 
     end
   end
 
@@ -143,17 +163,19 @@ function _update()
   end
 end
 
-function explodey(x, y)
+function spawn_explosion(x, y)
   if not x then x = rnd(128) end
   if not y then y = rnd(128) end
 
-  return {
-    xp = x,
-    yp = y,
-    size = 10,
-    col = 8,
-    t = 0
-  }
+  e = {}
+  e.x = x
+  e.y = y
+  e.size = 10
+  e.col = 8
+  e.t = 0
+  e.final_damage = false
+
+  return e
 end
 
 
@@ -184,7 +206,7 @@ function check_bullet_collision(b, trn)
     ty = 128 - terrain_height
 
     if by >= ty then
-        return explodey(bx, ty)
+        return spawn_explosion(bx, ty)
     end
 end
 
@@ -223,16 +245,108 @@ end
 
 
 function tick_explosion(e)
-  e.t += conf.explosion_speed
-
-  if e.t == e.size then 
-    -- print("bang")
-    -- mod terrain
+  if e.final_damage == true then return nil end
+  
+  if e.t > e.size then
+    e.final_damage = true 
+  else
+    e.t += conf.explosion_speed
   end
 
-  if e.t > e.size then return nil end
-
   return e
+end
+
+-- function generate_circle(z,x,y)
+-- end
+
+function generate_circle(r, x, y)
+x = 0
+y = 0
+  local points = {}
+  
+  for xi=0,r do
+    -- p = { x = 64, y = 64}
+    p = {}
+    p.x = (xi) + x
+    p.y = (-sqrt(r^2 - xi^2)) + y
+    p.c = 12 --clamp(xi, 0, 16)
+    add(points, p)
+  end
+
+  for xi=0,r do
+    -- p = { x = 64, y = 64}
+    p = {}
+    p.x = (xi) + x
+    p.y = (sqrt(r^2 - xi^2)) + y
+    p.c = 11 --clamp(xi, 0, 16)
+    add(points, p)
+  end
+
+
+  for xi=0,r do
+    -- p = { x = 64, y = 64}
+    p = {}
+    p.x = (-xi) + x
+    p.y = (sqrt(r^2 - xi^2)) + y
+    p.c = 10 --clamp(xi, 0, 16)
+    add(points, p)
+  end
+
+
+  for xi=0,r do
+    -- p = { x = 64, y = 64}
+    p = {}
+    p.x = (-xi) + x
+    p.y = (-sqrt(r^2 - xi^2)) + y
+    p.c = 2 --clamp(xi, 0, 16)
+    add(points, p)
+  end
+
+
+
+  -- for xi=0,-r,-1 do
+  --   -- p = { x = 64, y = 64}
+  --   p = {}
+  --   p.x = xi + x
+  --   p.y = sqrt(r^2 - xi^2) + y
+  --   add(points, p)
+  -- end
+
+  -- for xi=0,-r,-1 do
+  --   -- p = { x = 64, y = 64}
+  --   p = {}
+  --   p.x = xi + x
+  --   p.y = (-sqrt(r^2 - xi^2)) + y
+  --   add(points, p)
+  -- end
+
+
+
+
+  return points
+end
+
+
+
+
+function apply_terrain_destruction(t, e)
+  if not e then return t end
+  if e.final_damage == false then return t end
+
+  expl_radius = e.size
+  leftmost = max(0, e.x - expl_radius)
+
+  rightmost = min(128, e.x + expl_radius)
+
+  for i=leftmost,rightmost do
+    -- ct = t[""..i]
+    t[""..i] -= expl_radius
+    -- p[i] = permutation[i+1]
+    -- p[256+i] = permutation[i+1]
+  end
+
+  return t
+  -- return make_terrain(e.size)
 end
 
 
@@ -256,6 +370,16 @@ function _draw()
     draw_explosion(explosion)
   end
 
+    if circle  and explosion then
+      for cp in  all(circle) do
+        -- box_around()
+
+        pset(cp.x + explosion.x, cp.y + explosion.y, cp.c)
+        -- box_around(cp.x, cp.y, 0, cp.c)
+      end
+    end
+
+
   pal()
 end
 
@@ -275,11 +399,11 @@ end
 
 function draw_explosion(e)
   if debug_bounding then 
-    box_around(e.xp, e.yp, e.size, 6)
+    box_around(e.x, e.y, e.size, 6)
   end
 
 
-  circfill(e.xp, e.yp, e.t, e.col)
+  circfill(e.x, e.y, e.t, e.col)
 end
 
 
@@ -361,83 +485,6 @@ function zspr(n,w,h,dx,dy,dz)
   sspr(sx,sy,sw,sh, dx,dy,dw,dh)
 end
 
-
-
-function noise(x, y, z) 
-  local X = flr(x % 255)
-  local Y = flr(y % 255)
-  local Z = flr(z % 255)
-  x = x - flr(x)
-  y = y - flr(y)
-  z = z - flr(z)
-  local u = fade(x)
-  local v = fade(y)
-  local w = fade(z)
-
-  A   = p[X  ]+Y
-  AA  = p[A]+Z
-  AB  = p[A+1]+Z
-  B   = p[X+1]+Y
-  BA  = p[B]+Z
-  BB  = p[B+1]+Z
-
-  return lerp(w, lerp(v, lerp(u, grad(p[AA  ], x  , y  , z   ), 
-                                 grad(p[BA  ], x-1, y  , z   )), 
-                         lerp(u, grad(p[AB  ], x  , y-1, z   ), 
-                                 grad(p[BB  ], x-1, y-1, z   ))),
-                 lerp(v, lerp(u, grad(p[AA+1], x  , y  , z-1 ),  
-                                 grad(p[BA+1], x-1, y  , z-1 )),
-                         lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
-                                 grad(p[BB+1], x-1, y-1, z-1 )))
-  )
-end
-
-
-function fade(t)
-  return t * t * t * (t * (t * 6 - 15) + 10)
-end
-
-
-function lerp(t,a,b)
-  return a + t * (b - a)
-end
-
-
-function grad(hash,x,y,z)
-  local h = hash % 16
-  local u 
-  local v 
-
-  if (h<8) then u = x else u = y end
-  if (h<4) then v = y elseif (h==12 or h==14) then v=x else v=z end
-  local r
-
-  if ((h%2) == 0) then r=u else r=-u end
-  if ((h%4) == 0) then r=r+v else r=r-v end
-  return r
-end
-
-
-p = {}
-local permutation = {151,160,137,91,90,15,
-  131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-  190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-  88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
-  77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-  102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
-  135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
-  5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-  223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
-  129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
-  251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
-  49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
-  138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
-}
-
-for i=0,255 do
-  p[i] = permutation[i+1]
-  p[256+i] = permutation[i+1]
-end
 
 
 
