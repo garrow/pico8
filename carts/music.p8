@@ -42,7 +42,7 @@ track_listing = {
 	{trackname="arpument", 
 		artist=composer, 
 		start=0,
-		finish=10,
+		finish=1,
 		colour=2,
 		speed=48,
 		mainrate=100,
@@ -313,9 +313,20 @@ function _draw()
 		--border
 		rect(0,0,127,127,song.colour)
 
+		bar_width = 50
+		bar_height = 3
+
+		btlx = 4
+		btly = 88
+
+		bbrx = btlx + bar_width
+		bbry = btly + bar_height
+
+
+
 		--background of timing bar
-		rect(15,87,113,92,6)
-		rectfill(16,88,112,91,0)
+		rect(btlx - 1, btly - 1, bbrx + 1, bbry + 1 ,6)
+		rectfill(btlx, btly, bbrx, bbry ,0)
 
 		-- d-pad
 		rectfill(24,109,36,111,6)
@@ -324,7 +335,14 @@ function _draw()
 		print ("stop",23,118,6)
 		print ("prev",7,108,6)
 		print ("next",39,108,6)
-		print ("LP", 5, 98, 6)
+		-- if (loop) then
+		-- 	print ("loop", 100, 88, 6)
+		-- else
+		--  print ("cont", 100, 88, 6)
+		-- end
+
+		print(step, 60, 88, 6)
+		print(songposition, 80, 88, song.colour)
 
 		--show track info on screen
 		print ("track " .. track,61,98,song.colour)
@@ -336,7 +354,7 @@ function _draw()
 		--frames since start of song
 		fr+=1
 		--timing bar
-		rectfill(16,88,(((songposition*97)%97)+16),91,song.colour)
+		rectfill(btlx,btly,(((songposition* bar_width)%bar_width)+btlx),bbry ,song.colour)
 	end
 
 end
