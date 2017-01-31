@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
 -- TODO
--- Terrain destruction
+-- Proper Height based Terrain destruction
 -- Tank Damage
 -- Make the terrain gen more lifelike
 -- Fix shot physics vertical angles
@@ -66,11 +66,6 @@ function _init()
   bullet = nil
   explosion = nil
   terrain = make_terrain(40)
-
-  circle = generate_circle(10, 40, 40)
-
-
-
 
   player_tank = make_tank()
 
@@ -269,151 +264,6 @@ function tick_explosion(e)
   return e
 end
 
-function generate_circle(r,x,y)
-  return generate_circle_heights(r,x,y)
-  end
-
-
-function generate_circle_heights(r, x, y)
-  if not x then x = 0 end
-  if not y then y = 0 end
-
-  local points = {}
-
-
-  local heightmap = {}
-
-  -- positive curve
-  for xi=0,r do
-    -- p = { x = 64, y = 64}
-    high_y = -flr((sqrt(r^2 - xi^2))) + y
-    low_y = flr((sqrt(r^2 - xi^2))) + y
-    height_at_x = abs(high_y - low_y)
-
-    heightmap[x + xi..""] = height_at_x
-    heightmap[x - xi..""] = height_at_x
-
-    p = {}
-    p.x = xi + x
-    p.y = abs(high_y - low_y) + y
-    p.c = 3
-    add(points, p)
-
-    p = {}
-    p.x = -xi + x
-    p.y = abs(high_y - low_y) + y
-    p.c = 4
-    add(points, p)
-
-    -- p = {}
-    -- p.x = (xi) + x
-    -- p.y = flr((sqrt(r^2 - xi^2))) + y
-    -- p.c = p.x --clamp(xi, 0, 16)
-    -- add(points, p)
-
-    -- p = {}
-    -- p.x = (xi) + x
-    -- p.y = -flr((sqrt(r^2 - xi^2))) + y
-    -- p.c = 13 --clamp(xi, 0, 16)
-    -- add(points, p)
-  end
-
-  -- --bottom-right
-  -- for xi=0,r do
-  --   -- p = { x = 64, y = 64}
-  --   p = {}
-  --   p.x = (xi) + x
-  --   p.y = (sqrt(r^2 - xi^2))) + y
-  --   p.c = 11 --clamp(xi, 0, 16)
-  --   add(points, p)
-  -- end
-
-
-  -- for xi=0,r do
-  --   -- p = { x = 64, y = 64}
-  --   p = {}
-  --   p.x = (-xi) + x
-  --   p.y = (sqrt(r^2 - xi^2)) + y
-  --   p.c = 10 --clamp(xi, 0, 16)
-  --   add(points, p)
-  -- end
-
-
-  -- for xi=0,r do
-  --   -- p = { x = 64, y = 64}
-  --   p = {}
-  --   p.x = (-xi) + x
-  --   p.y = (-sqrt(r^2 - xi^2)) + y
-  --   p.c = 2 --clamp(xi, 0, 16)
-  --   add(points, p)
-  -- end
-  -- return points
-  return heightmap
-end
-
-
-
-
-
-function old_generate_circle(r, x, y)
-  x = 0
-  y = 0
-  local points = {}
-
-  -- TOPRIGHT
-  for xi=0,r do
-    -- p = { x = 64, y = 64}
-    p = {}
-    p.x = (xi) + x
-    p.y = flr((-sqrt(r^2 - xi^2))) + y
-    p.c = 12 --clamp(xi, 0, 16)
-    add(points, p)
-  end
-
-  for yi=0,r do
-    -- p = { x = 64, y = 64}
-    p = {}
-    p.x = flr((sqrt(r^2 - yi^2))) + x
-
-    p.y = -yi + y
-    p.c = 12 --clamp(xi, 0, 16)
-    add(points, p)
-  end
-
-
-
-
-  -- --bottom-right
-  -- for xi=0,r do
-  --   -- p = { x = 64, y = 64}
-  --   p = {}
-  --   p.x = (xi) + x
-  --   p.y = (sqrt(r^2 - xi^2)) + y
-  --   p.c = 11 --clamp(xi, 0, 16)
-  --   add(points, p)
-  -- end
-
-
-  -- for xi=0,r do
-  --   -- p = { x = 64, y = 64}
-  --   p = {}
-  --   p.x = (-xi) + x
-  --   p.y = (sqrt(r^2 - xi^2)) + y
-  --   p.c = 10 --clamp(xi, 0, 16)
-  --   add(points, p)
-  -- end
-
-
-  -- for xi=0,r do
-  --   -- p = { x = 64, y = 64}
-  --   p = {}
-  --   p.x = (-xi) + x
-  --   p.y = (-sqrt(r^2 - xi^2)) + y
-  --   p.c = 2 --clamp(xi, 0, 16)
-  --   add(points, p)
-  -- end
-  return points
-end
 
 
 
@@ -422,29 +272,42 @@ function apply_terrain_destruction(t, e)
   if not e then return t end
   if e.final_damage == false then return t end
 
-  expl_radius = e.size
-
-  displacements = generate_circle_heights(expl_radius, e.x, e.y)
+  displacements = generate_circle_heights(e.size, e.x, e.y)
 
   for x, d in pairs(displacements) do
-    -- ct = t[""..i]
-    t[""..x] -= flr(d/2)
-    -- p[i] = permutation[i+1]
-    -- p[256+i] = permutation[i+1]
+
+    current_height = t[""..x]
+    if current_height then
+      current_height = 128 - current_height
+
+      min_explosion_height = (e.y) + (d/2)
+      displaced = current_height + d
+      current_height = clamp(min_explosion_height, current_height, displaced) -- max(current_height,min(min_explosion_height, displaced))
+
+      t[""..x] = 128 - current_height
+    end
+
+  end
+  return t
+end
+
+-- Return a list of X coordinates the size of the circle at that point.
+function generate_circle_heights(r, x, y)
+  if not x then x = 0 end
+  if not y then y = 0 end
+
+  local heightmap = {}
+
+  for xi=0,r do
+    high_y      = -flr((sqrt(r^2 - xi^2))) + y
+    low_y       =  flr((sqrt(r^2 - xi^2))) + y
+    height_at_x = abs(high_y - low_y)
+
+    heightmap[x + xi..""] = height_at_x
+    heightmap[x - xi..""] = height_at_x
   end
 
-  -- leftmost = max(0, e.x - expl_radius)
-  -- rightmost = min(128, e.x + expl_radius)
-
-  -- for i=leftmost,rightmost do
-  --   -- ct = t[""..i]
-  --   t[""..i] -= expl_radius
-  --   -- p[i] = permutation[i+1]
-  --   -- p[256+i] = permutation[i+1]
-  -- end
-
-  return t
-  -- return make_terrain(e.size)
+  return heightmap
 end
 
 
@@ -467,7 +330,7 @@ function _draw()
   if explosion then
     draw_explosion(explosion)
   end
-print_debug_table(generate_circle_heights(4,64,64),0,0)
+
 
 
 
