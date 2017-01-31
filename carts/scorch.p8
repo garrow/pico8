@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
--- TODO 
+-- TODO
 -- Terrain destruction
 -- Tank Damage
 -- Make the terrain gen more lifelike
@@ -19,7 +19,8 @@ max_int = 32767
 
 conf = {}
 -- conf.explosion_speed = 0.125
-conf.explosion_speed = 0.45
+conf.explosion_speed = 0.75
+conf.explosion_size = 15
 conf.turret_speed = 2
 conf.tank_speed = 1
 conf.tank_height = 4
@@ -66,7 +67,7 @@ function _init()
   explosion = nil
   terrain = make_terrain(40)
 
-  circle = generate_circle(11, 40, 40)
+  circle = generate_circle(10, 40, 40)
 
 
 
@@ -87,19 +88,31 @@ function make_tank()
   return t
 end
 
-function update_tank(tank) 
+function update_tank(tank)
 
 
 end
 
 
+function build_circle_debug_table(cirlce)
+  debug_table = {}
+  for cp in all(circle) do
+
+    add(debug_table, "x:"..cp.x .." y:" .. cp.y)
+
+  end
+  return debug_table
+end
+
 function _update()
-  t += 1 
+  t += 1
   t %= max_int
 
   firing = btn(4, 0) and btnp(4, 0)
 
   -- if t % 3 != 0 then return end
+
+  c_table = build_circle_debug_table(circle)
 
   time_paused = btn(5, 0)
 
@@ -109,10 +122,10 @@ function _update()
       terrain = apply_terrain_destruction(terrain, explosion)
 
     end
-  else 
-    if not bullet and firing then 
-      bullet = simple_shoot(player_tank)  
-      -- explosion = spawn_explosion(player_tank.x, player_tank.y) 
+  else
+    if not bullet and firing then
+      bullet = simple_shoot(player_tank)
+      -- explosion = spawn_explosion(player_tank.x, player_tank.y)
     end
   end
 
@@ -126,11 +139,11 @@ function _update()
       bullet = nil
     end
   end
-  
-  if btn(0, 0) then 
+
+  if btn(0, 0) then
     player_tank.x = max(0, player_tank.x - conf.tank_speed)
   end
-  if btn(1, 0) then 
+  if btn(1, 0) then
     player_tank.x = min(128, player_tank.x + conf.tank_speed)
   end
 
@@ -142,7 +155,7 @@ function _update()
   if actual_tank_pos < tank_pos_on_terrain then
     player_tank.y += 1
   end
-  
+
   if actual_tank_pos > tank_pos_on_terrain then
     player_tank.y -= 1
 
@@ -153,11 +166,11 @@ function _update()
   -- foo =  { gat = 128 - terrain[""..player_tank.y],  tx = player_tank.x  }
 
 
-  if btn(2, 0) then 
+  if btn(2, 0) then
     na = (player_tank.tur_angle + conf.turret_speed) % 360
     player_tank.tur_angle = na
   end
-  if btn(3, 0) then 
+  if btn(3, 0) then
     na = (player_tank.tur_angle - conf.turret_speed) % 360
     player_tank.tur_angle = na
   end
@@ -170,7 +183,7 @@ function spawn_explosion(x, y)
   e = {}
   e.x = x
   e.y = y
-  e.size = 10
+  e.size = conf.explosion_size
   e.col = 8
   e.t = 0
   e.final_damage = false
@@ -189,7 +202,7 @@ function tick_bullet(ob)
   add(ob.trail, {x = ob.x, y = ob.y })
 
   ob.x += ob.vx
-  ob.y += ob.vy 
+  ob.y += ob.vy
   return ob
 end
 
@@ -214,41 +227,41 @@ function simple_shoot(from_tank)
   bullet = {}
   bullet.speed = conf.bullet_speed
   bullet.trail = {}
-  bullet.x = from_tank.x 
+  bullet.x = from_tank.x
   bullet.y = from_tank.y
   bullet.scale_x = cos(from_tank.tur_angle / 360)
   bullet.vx = -1
   bullet.vy = - conf.bullet_speed
-  return bullet 
+  return bullet
 end
 
 
 -- function shoot(from_tank)
 --   spd = conf.bullet_speed
---   theta = from_tank.tur_angle / 360 
-  
+--   theta = from_tank.tur_angle / 360
+
 --   -- scale_x = cos(theta)
 --   -- scale_y = sin(theta)
 
 --   bullet = {}
 --   bullet.speed = conf.bullet_speed
 --   bullet.accel = conf.bullet_accel
---   bullet.x = from_tank.x 
+--   bullet.x = from_tank.x
 --   bullet.y = from_tank.y
 --   bullet.scale_x = cos(theta)
 --   bullet.scale_y = sin(theta)
 --   bullet.vx = 0
---   bullet.vy = 0 
+--   bullet.vy = 0
 
---   return bullet  
+--   return bullet
 -- end
 
 
 function tick_explosion(e)
   if e.final_damage == true then return nil end
-  
+
   if e.t > e.size then
-    e.final_damage = true 
+    e.final_damage = true
   else
     e.t += conf.explosion_speed
   end
@@ -256,73 +269,149 @@ function tick_explosion(e)
   return e
 end
 
--- function generate_circle(z,x,y)
--- end
+function generate_circle(r,x,y)
+  return generate_circle_heights(r,x,y)
+  end
 
-function generate_circle(r, x, y)
-x = 0
-y = 0
+
+function generate_circle_heights(r, x, y)
+  if not x then x = 0 end
+  if not y then y = 0 end
+
   local points = {}
-  
+
+
+  local heightmap = {}
+
+  -- positive curve
+  for xi=0,r do
+    -- p = { x = 64, y = 64}
+    high_y = -flr((sqrt(r^2 - xi^2))) + y
+    low_y = flr((sqrt(r^2 - xi^2))) + y
+    height_at_x = abs(high_y - low_y)
+
+    heightmap[x + xi..""] = height_at_x
+    heightmap[x - xi..""] = height_at_x
+
+    p = {}
+    p.x = xi + x
+    p.y = abs(high_y - low_y) + y
+    p.c = 3
+    add(points, p)
+
+    p = {}
+    p.x = -xi + x
+    p.y = abs(high_y - low_y) + y
+    p.c = 4
+    add(points, p)
+
+    -- p = {}
+    -- p.x = (xi) + x
+    -- p.y = flr((sqrt(r^2 - xi^2))) + y
+    -- p.c = p.x --clamp(xi, 0, 16)
+    -- add(points, p)
+
+    -- p = {}
+    -- p.x = (xi) + x
+    -- p.y = -flr((sqrt(r^2 - xi^2))) + y
+    -- p.c = 13 --clamp(xi, 0, 16)
+    -- add(points, p)
+  end
+
+  -- --bottom-right
+  -- for xi=0,r do
+  --   -- p = { x = 64, y = 64}
+  --   p = {}
+  --   p.x = (xi) + x
+  --   p.y = (sqrt(r^2 - xi^2))) + y
+  --   p.c = 11 --clamp(xi, 0, 16)
+  --   add(points, p)
+  -- end
+
+
+  -- for xi=0,r do
+  --   -- p = { x = 64, y = 64}
+  --   p = {}
+  --   p.x = (-xi) + x
+  --   p.y = (sqrt(r^2 - xi^2)) + y
+  --   p.c = 10 --clamp(xi, 0, 16)
+  --   add(points, p)
+  -- end
+
+
+  -- for xi=0,r do
+  --   -- p = { x = 64, y = 64}
+  --   p = {}
+  --   p.x = (-xi) + x
+  --   p.y = (-sqrt(r^2 - xi^2)) + y
+  --   p.c = 2 --clamp(xi, 0, 16)
+  --   add(points, p)
+  -- end
+  -- return points
+  return heightmap
+end
+
+
+
+
+
+function old_generate_circle(r, x, y)
+  x = 0
+  y = 0
+  local points = {}
+
+  -- TOPRIGHT
   for xi=0,r do
     -- p = { x = 64, y = 64}
     p = {}
     p.x = (xi) + x
-    p.y = (-sqrt(r^2 - xi^2)) + y
+    p.y = flr((-sqrt(r^2 - xi^2))) + y
     p.c = 12 --clamp(xi, 0, 16)
     add(points, p)
   end
 
-  for xi=0,r do
+  for yi=0,r do
     -- p = { x = 64, y = 64}
     p = {}
-    p.x = (xi) + x
-    p.y = (sqrt(r^2 - xi^2)) + y
-    p.c = 11 --clamp(xi, 0, 16)
-    add(points, p)
-  end
+    p.x = flr((sqrt(r^2 - yi^2))) + x
 
-
-  for xi=0,r do
-    -- p = { x = 64, y = 64}
-    p = {}
-    p.x = (-xi) + x
-    p.y = (sqrt(r^2 - xi^2)) + y
-    p.c = 10 --clamp(xi, 0, 16)
-    add(points, p)
-  end
-
-
-  for xi=0,r do
-    -- p = { x = 64, y = 64}
-    p = {}
-    p.x = (-xi) + x
-    p.y = (-sqrt(r^2 - xi^2)) + y
-    p.c = 2 --clamp(xi, 0, 16)
+    p.y = -yi + y
+    p.c = 12 --clamp(xi, 0, 16)
     add(points, p)
   end
 
 
 
-  -- for xi=0,-r,-1 do
+
+  -- --bottom-right
+  -- for xi=0,r do
   --   -- p = { x = 64, y = 64}
   --   p = {}
-  --   p.x = xi + x
-  --   p.y = sqrt(r^2 - xi^2) + y
+  --   p.x = (xi) + x
+  --   p.y = (sqrt(r^2 - xi^2)) + y
+  --   p.c = 11 --clamp(xi, 0, 16)
   --   add(points, p)
   -- end
 
-  -- for xi=0,-r,-1 do
+
+  -- for xi=0,r do
   --   -- p = { x = 64, y = 64}
   --   p = {}
-  --   p.x = xi + x
+  --   p.x = (-xi) + x
+  --   p.y = (sqrt(r^2 - xi^2)) + y
+  --   p.c = 10 --clamp(xi, 0, 16)
+  --   add(points, p)
+  -- end
+
+
+  -- for xi=0,r do
+  --   -- p = { x = 64, y = 64}
+  --   p = {}
+  --   p.x = (-xi) + x
   --   p.y = (-sqrt(r^2 - xi^2)) + y
+  --   p.c = 2 --clamp(xi, 0, 16)
   --   add(points, p)
   -- end
-
-
-
-
   return points
 end
 
@@ -334,16 +423,25 @@ function apply_terrain_destruction(t, e)
   if e.final_damage == false then return t end
 
   expl_radius = e.size
-  leftmost = max(0, e.x - expl_radius)
 
-  rightmost = min(128, e.x + expl_radius)
+  displacements = generate_circle_heights(expl_radius, e.x, e.y)
 
-  for i=leftmost,rightmost do
+  for x, d in pairs(displacements) do
     -- ct = t[""..i]
-    t[""..i] -= expl_radius
+    t[""..x] -= flr(d/2)
     -- p[i] = permutation[i+1]
     -- p[256+i] = permutation[i+1]
   end
+
+  -- leftmost = max(0, e.x - expl_radius)
+  -- rightmost = min(128, e.x + expl_radius)
+
+  -- for i=leftmost,rightmost do
+  --   -- ct = t[""..i]
+  --   t[""..i] -= expl_radius
+  --   -- p[i] = permutation[i+1]
+  --   -- p[256+i] = permutation[i+1]
+  -- end
 
   return t
   -- return make_terrain(e.size)
@@ -362,15 +460,18 @@ function _draw()
   -- print(pget(64,64), 64, 0, 6)
   print(player_tank.tur_angle, 128-20, 0, 6)
   -- print(atan2(0, player_tank.tur_angle))
-  
+
   draw_tank(player_tank)
   draw_bullet(bullet)
 
-  if explosion then    
+  if explosion then
     draw_explosion(explosion)
   end
+print_debug_table(generate_circle_heights(4,64,64),0,0)
 
-    if circle  and explosion then
+
+
+    if circle and explosion then
       for cp in  all(circle) do
         -- box_around()
 
@@ -378,6 +479,22 @@ function _draw()
         -- box_around(cp.x, cp.y, 0, cp.c)
       end
     end
+
+
+
+    if circle then
+      -- print_debug_table(circle)
+
+
+      for cp in  all(circle) do
+        -- box_around()
+
+        pset(cp.x + 64, cp.y + 64, cp.c)
+        -- box_around(cp.x, cp.y, 0, cp.c)
+      end
+
+    end
+
 
 
   pal()
@@ -398,12 +515,16 @@ end
 
 
 function draw_explosion(e)
-  if debug_bounding then 
+  if debug_bounding then
     box_around(e.x, e.y, e.size, 6)
   end
 
+  for ring=e.t,0,-1 do
+    circfill(e.x, e.y, ring, ring)
+  end
 
-  circfill(e.x, e.y, e.t, e.col)
+
+  -- circfill(e.x, e.y, e.t, e.col)
 end
 
 
@@ -414,14 +535,14 @@ function draw_bullet(bullet)
   circfill(bullet.x, bullet.y, 1, 14)
   for trail in all(bullet.trail) do
     circfill(trail.x, trail.y, 0, 0)
-  
+
   end
 
 end
 
 function draw_tank(tank)
   -- t_col = 13
-  
+
   -- box_around(tank.x, tank.y, 2)
 
   pal(13,tank.color)
@@ -452,7 +573,7 @@ function print_debug_table(t, x_offset, y_offset, color)
 
   bos = 0
   for k,v in pairs(t) do
-    if type(v) == "table" then 
+    if type(v) == "table" then
       v = "_(TABLE)"
     end
 
