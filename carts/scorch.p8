@@ -12,7 +12,7 @@ __lua__
 -- Add edge of screen as danger. Water pit or whatever
 -- Multiple shots and explosions at once
 
-
+show_profile_stats = true
 
 debug_bounding = false
 max_int = 32767
@@ -27,6 +27,7 @@ conf.tank_height = 4
 conf.bullet_speed = 4
 -- conf.bullet_accel = 0.1
 conf.gravity = 0.3
+conf.max_terrain_width = 128
 
 player_tank = nil
 
@@ -56,6 +57,37 @@ function clamp(v, mn, mx)
   return max(mn, min(v, mx))
 end
 
+function plain_terrain()
+  local t = {}
+  t.color = 4
+  return t
+end
+
+
+function infill_terrain(t)
+  terrain_d = {}
+
+  for x, height in pairs(t) do
+
+    min_y = 128 - height
+
+    for y=min_y,128 do
+      pix = plain_terrain()
+      pix.x = x
+      pix.y = y
+
+      index = x + y * conf.max_terrain_width
+
+      terrain_d[index ..""] = pix
+      -- add(terrain_d, pix )
+
+
+    end
+
+  end
+
+  return terrain_d
+end
 
 
 function _init()
@@ -102,6 +134,8 @@ end
 function _update()
   t += 1
   t %= max_int
+
+  terrain_d = infill_terrain(terrain)
 
   firing = btn(4, 0) and btnp(4, 0)
 
@@ -311,12 +345,24 @@ function generate_circle_heights(r, x, y)
 end
 
 
+function draw_terrain_d(td)
+  if not td then return end
+
+  for idx, pix in pairs(td) do
+    -- foo()
+    pset(pix.x, pix.y, 0)
+  end
+
+end
+
 
 function _draw()
   cls()
   draw_sky()
 
-  draw_terrain(terrain)
+  -- draw_terrain(terrain)
+  draw_terrain_d(terrain_d)
+  -- print_debug_table(terrain_d["12868"])
 
   -- DEBUG STUFF
   -- rect(63, 63, 65, 65, 10)
@@ -358,8 +404,10 @@ function _draw()
 
     end
 
-
-
+  if show_profile_stats then
+    print("cpu:"..stat(1),90,6,8)
+    print("mem:"..1000/stat(0),90,12,8)
+  end
   pal()
 end
 
