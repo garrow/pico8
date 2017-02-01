@@ -13,6 +13,12 @@ __lua__
 -- Multiple shots and explosions at once
 
 
+function log(msg)
+  printh(msg, "scorch.log", false)
+  return
+end
+
+show_profile_stats = true
 
 debug_bounding = false
 max_int = 32767
@@ -60,6 +66,7 @@ end
 
 function _init()
   -- srand(33)
+  printh("------SCORCH BOOTED-----", "scorch.log", true)
   tanks = {}
   t = 0
 
