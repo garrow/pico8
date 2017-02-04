@@ -2,7 +2,6 @@ pico-8 cartridge // http://www.pico-8.com
 version 8
 __lua__
 -- TODO
--- Proper Height based Terrain destruction
 -- Tank Damage
 -- Make the terrain gen more lifelike
 -- Fix shot physics vertical angles
@@ -11,6 +10,10 @@ __lua__
 -- Expand game world to wider than screen
 -- Add edge of screen as danger. Water pit or whatever
 -- Multiple shots and explosions at once
+-- Clouds & Sky
+--
+-- DONE
+-- Proper Height based Terrain destruction
 
 
 function log(msg)
@@ -26,18 +29,78 @@ max_int = 32767
 conf = {}
 -- conf.explosion_speed = 0.125
 conf.explosion_speed = 0.75
-conf.explosion_size = 15
+conf.explosion_size = 10
 conf.turret_speed = 2
 conf.tank_speed = 1
 conf.tank_height = 4
+conf.tank_health = 10
 conf.bullet_speed = 4
 -- conf.bullet_accel = 0.1
 conf.gravity = 0.3
 
 player_tank = nil
 
-function make_terrain(something)
 
+
+function clamp(v, mn, mx)
+  return max(mn, min(v, mx))
+end
+
+
+-- function copy_table(t)
+--   local cloned = {}
+--   for , y in pairs(t) do
+--     cloned[x + 0 ..""] = copy(y)
+--   end
+--   return cloned
+-- end
+
+
+function copy(o)
+  local c
+  if type(o) == 'table' then
+    c = {}
+    for k, v in pairs(o) do
+    c[k] = copy(v)
+    end
+  else
+    c = o
+  end
+  return c
+end
+
+
+function _init()
+  -- srand(33)
+  printh("------SCORCH BOOTED-----", "scorch.log", true)
+  tanks = {}
+  t = 0
+
+  bullet = nil
+  explosion = nil
+  terrain = make_terrain(40)
+
+  first_terrain = copy(terrain)
+  -- terrain = first_terrain
+
+  player_tank = make_tank()
+
+end
+
+function make_tank()
+  local t = {}
+  t.color = flr(rnd(15))
+  t.x = 64
+  t.y = 64
+  t.tur_angle = 115
+
+
+  add(tanks, t)
+  return t
+end
+
+
+function make_terrain(something)
   tn = {}
   n = 128
   last = 64
@@ -58,42 +121,20 @@ function make_terrain(something)
   return tn
 end
 
-function clamp(v, mn, mx)
-  return max(mn, min(v, mx))
-end
-
-
-
-function _init()
-  -- srand(33)
-  printh("------SCORCH BOOTED-----", "scorch.log", true)
-  tanks = {}
-  t = 0
-
-  bullet = nil
-  explosion = nil
-  terrain = make_terrain(40)
-
-  player_tank = make_tank()
-
-end
-
-function make_tank()
-  local t = {}
-  t.color = flr(rnd(15))
-  t.x = 64
-  t.y = 64
-  t.tur_angle = 115
-
-
-  add(tanks, t)
-  return t
-end
-
 function update_tank(tank)
 
 
 end
+
+-- TODO Terrain Texture
+-- function build_grass()
+--   local randmap = {}
+--   for x=0,128 do
+--     for y=0,128 do
+
+--     end
+--   end
+-- end
 
 
 function build_circle_debug_table(cirlce)
@@ -179,6 +220,7 @@ function _update()
 end
 
 function spawn_explosion(x, y)
+  local e
   if not x then x = rnd(128) end
   if not y then y = rnd(128) end
 
@@ -279,7 +321,7 @@ function apply_terrain_destruction(t, e)
   if not e then return t end
   if e.final_damage == false then return t end
 
-  displacements = generate_circle_heights(e.size, e.x, e.y)
+  local displacements = generate_circle_heights(e.size, e.x, e.y)
 
   for x, d in pairs(displacements) do
 
@@ -323,7 +365,7 @@ function _draw()
   cls()
   draw_sky()
 
-  draw_terrain(terrain)
+  draw_terrain(terrain, first_terrain)
 
   -- DEBUG STUFF
   -- rect(63, 63, 65, 65, 10)
@@ -377,9 +419,21 @@ function draw_sky()
   rectfill(0,0,128,128,7)
 end
 
-function draw_terrain(t)
-  for tx, ty in pairs(t) do
-    rectfill(tx, 128-ty, tx+1, 128, 3)
+function draw_terrain(t, starting_terrain)
+  local dirt = 4
+  local grass = 3
+  local debris = 5
+
+  for tx, height in pairs(t) do
+    ty = 128-height
+    rectfill(tx, ty, tx, 128, dirt)
+
+    at_original_level = starting_terrain[tx..""]
+    if at_original_level == height then
+      pset(tx, ty, grass)
+    else
+      pset(tx, ty, debris)
+    end
   end
 end
 
@@ -392,9 +446,6 @@ function draw_explosion(e)
   for ring=e.t,0,-1 do
     circfill(e.x, e.y, ring, ring)
   end
-
-
-  -- circfill(e.x, e.y, e.t, e.col)
 end
 
 
