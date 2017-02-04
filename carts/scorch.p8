@@ -71,7 +71,7 @@ end
 
 
 function _init()
-  -- srand(33)
+
   printh("------SCORCH BOOTED-----", "scorch.log", true)
   tanks = {}
   t = 0
@@ -81,7 +81,6 @@ function _init()
   terrain = make_terrain(40)
 
   first_terrain = copy(terrain)
-  -- terrain = first_terrain
 
   player_tank = make_tank()
 
@@ -126,17 +125,6 @@ function update_tank(tank)
 
 end
 
--- TODO Terrain Texture
--- function build_grass()
---   local randmap = {}
---   for x=0,128 do
---     for y=0,128 do
-
---     end
---   end
--- end
-
-
 function build_circle_debug_table(cirlce)
   debug_table = {}
   for cp in all(circle) do
@@ -155,18 +143,17 @@ function _update()
 
   -- if t % 3 != 0 then return end
 
-  c_table = build_circle_debug_table(circle)
+  -- c_table = build_circle_debug_table(circle)
 
   time_paused = btn(5, 0)
 
   if explosion then
     if not time_paused then
       explosion = tick_explosion(explosion)
-      terrain = apply_terrain_destruction(terrain, explosion)
-
+      terrain   = apply_terrain_destruction(terrain, explosion)
     end
   else
-    if not bullet and firing then
+    if firing and not bullet then
       bullet = simple_shoot(player_tank)
       -- explosion = spawn_explosion(player_tank.x, player_tank.y)
     end
@@ -280,27 +267,6 @@ function simple_shoot(from_tank)
 end
 
 
--- function shoot(from_tank)
---   spd = conf.bullet_speed
---   theta = from_tank.tur_angle / 360
-
---   -- scale_x = cos(theta)
---   -- scale_y = sin(theta)
-
---   bullet = {}
---   bullet.speed = conf.bullet_speed
---   bullet.accel = conf.bullet_accel
---   bullet.x = from_tank.x
---   bullet.y = from_tank.y
---   bullet.scale_x = cos(theta)
---   bullet.scale_y = sin(theta)
---   bullet.vx = 0
---   bullet.vy = 0
-
---   return bullet
--- end
-
-
 function tick_explosion(e)
   if e.final_damage == true then return nil end
 
@@ -312,10 +278,6 @@ function tick_explosion(e)
 
   return e
 end
-
-
-
-
 
 function apply_terrain_destruction(t, e)
   if not e then return t end
@@ -359,7 +321,9 @@ function generate_circle_heights(r, x, y)
   return heightmap
 end
 
-
+------------------------------------------------------------------
+--- DRAW ---------------------------------------------------------
+------------------------------------------------------------------
 
 function _draw()
   cls()
@@ -368,10 +332,9 @@ function _draw()
   draw_terrain(terrain, first_terrain)
 
   -- DEBUG STUFF
-  -- rect(63, 63, 65, 65, 10)
-  -- print(pget(64,64), 64, 0, 6)
   print(player_tank.tur_angle, 128-20, 0, 6)
-  -- print(atan2(0, player_tank.tur_angle))
+
+  -- END DEBUG
 
   draw_tank(player_tank)
   draw_bullet(bullet)
@@ -380,40 +343,24 @@ function _draw()
     draw_explosion(explosion)
   end
 
+  if circle and explosion then
+    for cp in  all(circle) do
+      -- box_around()
 
-
-
-    if circle and explosion then
-      for cp in  all(circle) do
-        -- box_around()
-
-        pset(cp.x + explosion.x, cp.y + explosion.y, cp.c)
-        -- box_around(cp.x, cp.y, 0, cp.c)
-      end
+      pset(cp.x + explosion.x, cp.y + explosion.y, cp.c)
+      -- box_around(cp.x, cp.y, 0, cp.c)
     end
+  end
 
-
-
-    if circle then
-      -- print_debug_table(circle)
-
-
-      for cp in  all(circle) do
-        -- box_around()
-
-        pset(cp.x + 64, cp.y + 64, cp.c)
-        -- box_around(cp.x, cp.y, 0, cp.c)
-      end
-
+  if circle then
+    for cp in  all(circle) do
+      pset(cp.x + 64, cp.y + 64, cp.c)
     end
+  end
 
-
-
+  -- Reset to default Palette
   pal()
 end
-
-
-
 
 function draw_sky()
   rectfill(0,0,128,128,7)
@@ -526,11 +473,6 @@ function zspr(n,w,h,dx,dy,dz)
   dh = sh * dz
   sspr(sx,sy,sw,sh, dx,dy,dw,dh)
 end
-
-
-
-
-
 
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
