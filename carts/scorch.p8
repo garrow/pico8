@@ -1,19 +1,35 @@
 pico-8 cartridge // http://www.pico-8.com
-version 8
+version 10
 __lua__
--- TODO
--- Tank Damage
--- Make the terrain gen more lifelike
--- Fix shot physics vertical angles
--- Make shots land at the point of impact on the terrain, not the top.
--- Track tank movement against terrain better
--- Expand game world to wider than screen
--- Add edge of screen as danger. Water pit or whatever
--- Multiple shots and explosions at once
--- Clouds & Sky
+-- todo
+-- tank damage
+-- make the terrain gen more lifelike
+-- fix shot physics vertical angles
+-- make shots land at the point of impact on the terrain, not the top.
+-- track tank movement against terrain better
+-- expand game world to wider than screen
+-- add edge of screen as danger. water pit or whatever
+-- multiple shots and explosions at once
+-- clouds & sky
 --
--- DONE
--- Proper Height based Terrain destruction
+-- done
+-- proper height based terrain destruction
+black = 0
+darkblue = 1
+purple = 2
+darkgreen = 3
+brown = 4
+darkgrey = 5
+lightgrey = 6
+white = 7
+red = 8
+orange = 9
+yellow = 10
+brightgreen = 11
+skyblue = 12
+greyblue = 13
+pink = 14
+tan = 15
 
 
 function log(msg)
@@ -23,17 +39,18 @@ end
 
 show_profile_stats = true
 
-debug_bounding = false
+debug_bounding = true
 max_int = 32767
 
 conf = {}
 -- conf.explosion_speed = 0.125
 conf.explosion_speed = 0.75
 conf.explosion_size = 10
-conf.turret_speed = 2
+conf.turret_speed = 1
 conf.tank_speed = 1
 conf.tank_height = 4
-conf.tank_health = 10
+conf.tank_health = 100
+conf.max_power = 99
 conf.bullet_speed = 4
 -- conf.bullet_accel = 0.1
 conf.gravity = 0.3
@@ -46,22 +63,12 @@ function clamp(v, mn, mx)
   return max(mn, min(v, mx))
 end
 
-
--- function copy_table(t)
---   local cloned = {}
---   for , y in pairs(t) do
---     cloned[x + 0 ..""] = copy(y)
---   end
---   return cloned
--- end
-
-
 function copy(o)
   local c
   if type(o) == 'table' then
     c = {}
     for k, v in pairs(o) do
-    c[k] = copy(v)
+      c[k] = copy(v)
     end
   else
     c = o
@@ -71,8 +78,7 @@ end
 
 
 function _init()
-
-  printh("------SCORCH BOOTED-----", "scorch.log", true)
+  printh("------scorch booted-----", "scorch.log", true)
   tanks = {}
   t = 0
 
@@ -91,7 +97,11 @@ function make_tank()
   t.color = flr(rnd(15))
   t.x = 64
   t.y = 64
-  t.tur_angle = 115
+  t.tur_angle = 89 -- flr(rnd(90)) + 90
+  t.input_type = "angle"
+  t.power = flr(rnd(conf.max_power))
+  t.health = flr(rnd(conf.tank_health))
+  t.hitbox = conf.tank_height
 
 
   add(tanks, t)
@@ -120,11 +130,6 @@ function make_terrain(something)
   return tn
 end
 
-function update_tank(tank)
-
-
-end
-
 function build_circle_debug_table(cirlce)
   debug_table = {}
   for cp in all(circle) do
@@ -139,6 +144,8 @@ function _update()
   t += 1
   t %= max_int
 
+  tanks = { player_tank }
+
   firing = btn(4, 0) and btnp(4, 0)
 
   -- if t % 3 != 0 then return end
@@ -151,6 +158,10 @@ function _update()
     if not time_paused then
       explosion = tick_explosion(explosion)
       terrain   = apply_terrain_destruction(terrain, explosion)
+
+      player_tank = apply_tank_damage(player_tank, explosion)
+
+
     end
   else
     if firing and not bullet then
@@ -162,11 +173,21 @@ function _update()
   if bullet and not time_paused then
     bullet = tick_bullet(bullet)
 
-    new_splosion = check_bullet_collision(bullet, terrain)
+    new_splosion = check_bullet_collision(bullet, terrain, tanks)
 
     if new_splosion then
       explosion = new_splosion
       bullet = nil
+    end
+  end
+
+  if btn(5, 0) and btnp(5,0) then
+    if player_tank.input_type == "power" then
+      player_tank.input_type = "angle"
+    else
+      if player_tank.input_type == "angle" then
+        player_tank.input_type = "power"
+      end
     end
   end
 
@@ -177,7 +198,7 @@ function _update()
     player_tank.x = min(128, player_tank.x + conf.tank_speed)
   end
 
-  -- GRAVITY HAX
+  -- gravity hax
 
   tank_pos_on_terrain = 128 - conf.tank_height - terrain[""..player_tank.x]
   actual_tank_pos = player_tank.y
@@ -195,26 +216,38 @@ function _update()
 
   -- foo =  { gat = 128 - terrain[""..player_tank.y],  tx = player_tank.x  }
 
-
-  if btn(2, 0) then
-    na = (player_tank.tur_angle + conf.turret_speed) % 360
-    player_tank.tur_angle = na
+  if player_tank.input_type == "angle" then
+    if btn(2, 0) then
+      na = (player_tank.tur_angle + conf.turret_speed) % 360
+      player_tank.tur_angle = na
+    end
+    if btn(3, 0) then
+      na = (player_tank.tur_angle - conf.turret_speed) % 360
+      player_tank.tur_angle = na
+    end
   end
-  if btn(3, 0) then
-    na = (player_tank.tur_angle - conf.turret_speed) % 360
-    player_tank.tur_angle = na
+
+  if player_tank.input_type == "power" then
+    new_tank_power = player_tank.power
+    if btn(2, 0) then new_tank_power = player_tank.power + 1 end
+    if btn(3, 0) then new_tank_power = player_tank.power - 1 end
+
+    player_tank.power = clamp(new_tank_power, 1, conf.max_power)
   end
 end
 
-function spawn_explosion(x, y)
+
+
+function spawn_explosion(x, y, size)
   local e
-  if not x then x = rnd(128) end
-  if not y then y = rnd(128) end
+  if not x    then x = rnd(128) end
+  if not y    then y = rnd(128) end
+  if not size then size = conf.explosion_size end
 
   e = {}
   e.x = x
   e.y = y
-  e.size = conf.explosion_size
+  e.size = size
   e.col = 8
   e.t = 0
   e.final_damage = false
@@ -237,16 +270,24 @@ function tick_bullet(ob)
   return ob
 end
 
-function check_bullet_collision(b, trn)
+function check_bullet_collision(b, trn, tanks)
     if not b then return end
 
     by = flr(b.y)
     bx = flr(b.x)
 
+    -- Hit Tank?
+    for tank in all(tanks) do
+      xdiff = abs(tank.x - bx)
+      ydiff = abs(tank.y - by)
+      if xdiff < tank.hitbox and ydiff < tank.hitbox then
+        return spawn_explosion(tank.x, tank.y)
+      end
+    end
+
+    -- Hit Ground?
     terrain_height = trn["" .. bx]
-
     if not terrain_height then return end
-
     ty = 128 - terrain_height
 
     if by >= ty then
@@ -293,16 +334,36 @@ function apply_terrain_destruction(t, e)
 
       min_explosion_height = (e.y) + (d/2)
       displaced = current_height + d
-      current_height = clamp(min_explosion_height, current_height, displaced) -- max(current_height,min(min_explosion_height, displaced))
+      current_height = clamp(min_explosion_height, current_height, displaced)
+      -- max(current_height,min(min_explosion_height, displaced))
 
-      t[""..x] = 128 - current_height
+      t[""..x] = max(1, 128 - current_height)
     end
 
   end
   return t
 end
 
--- Return a list of X coordinates the size of the circle at that point.
+function pydist(x1, y1, x2, y2)
+  return ((x1 - x2) ^ 2 ) + ((y1 - y2) ^ 2)
+end
+
+function apply_tank_damage(tank, exp)
+  if not exp then return tank end
+  if exp.final_damage == false then return tank end
+
+  ex = exp.x
+  ey = exp.y
+
+  dist = abs(pydist(ex, ey, tank.x, tank.y))
+
+  tank.health = tank.health - max(0, exp.size - dist)
+
+  return tank
+end
+
+
+-- return a list of x coordinates the size of the circle at that point.
 function generate_circle_heights(r, x, y)
   if not x then x = 0 end
   if not y then y = 0 end
@@ -322,7 +383,7 @@ function generate_circle_heights(r, x, y)
 end
 
 ------------------------------------------------------------------
---- DRAW ---------------------------------------------------------
+--- draw ---------------------------------------------------------
 ------------------------------------------------------------------
 
 function _draw()
@@ -331,12 +392,9 @@ function _draw()
 
   draw_terrain(terrain, first_terrain)
 
-  -- DEBUG STUFF
-  print(player_tank.tur_angle, 128-20, 0, 6)
-
-  -- END DEBUG
-
   draw_tank(player_tank)
+  draw_healthbar(player_tank)
+  draw_player_ui(player_tank)
   draw_bullet(bullet)
 
   if explosion then
@@ -345,10 +403,7 @@ function _draw()
 
   if circle and explosion then
     for cp in  all(circle) do
-      -- box_around()
-
       pset(cp.x + explosion.x, cp.y + explosion.y, cp.c)
-      -- box_around(cp.x, cp.y, 0, cp.c)
     end
   end
 
@@ -358,8 +413,56 @@ function _draw()
     end
   end
 
-  -- Reset to default Palette
+  -- reset to default palette
   pal()
+end
+
+function chars(numchar)
+  return numchar * 5
+end
+
+function draw_player_ui(tank)
+  -- tank.input_type
+  local active = red
+  local inactive = darkgrey
+  local base_y = 1
+
+  if player_tank.input_type == "power" then
+    power_color = active
+    angle_color = inactive
+  else
+    power_color = inactive
+    angle_color = active
+  end
+
+
+  -- spr(4, 0, 0)
+  -- spr(4, tank.x - 20, tank.y -20)
+  print("\x86p:"..tank.power, 128 - chars(13), base_y, power_color)
+  print("\x86a:"..tank.tur_angle.."O", 128 - chars(7) - 1, base_y, angle_color)
+  print("\x87"..tank.health .."%", 128 - chars(20) - 1, base_y, skyblue)
+  -- print()
+end
+
+function draw_healthbar(tank)
+  local origin_x = tank.x - 6
+  local origin_y = tank.y - 6
+
+  local h_color = green
+
+  line(
+    origin_x,
+    origin_y,
+    origin_x + conf.tank_health/10,
+    origin_y,
+    black )
+
+  line(
+    origin_x,
+    origin_y,
+    origin_x + tank.health/10,
+    origin_y,
+    brightgreen )
 end
 
 function draw_sky()
@@ -384,7 +487,6 @@ function draw_terrain(t, starting_terrain)
   end
 end
 
-
 function draw_explosion(e)
   if debug_bounding then
     box_around(e.x, e.y, e.size, 6)
@@ -394,7 +496,6 @@ function draw_explosion(e)
     circfill(e.x, e.y, ring, ring)
   end
 end
-
 
 function draw_bullet(bullet)
   if not bullet then return end
@@ -442,7 +543,7 @@ function print_debug_table(t, x_offset, y_offset, color)
   bos = 0
   for k,v in pairs(t) do
     if type(v) == "table" then
-      v = "_(TABLE)"
+      v = "_(table)"
     end
 
     print(k .. " " .. v, x_offset, y_offset+(bos*6), color)
@@ -475,14 +576,14 @@ function zspr(n,w,h,dx,dy,dz)
 end
 
 __gfx__
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700000000005000000000055500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0007700000000005555000000055d500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000555555555555000005555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-007007000000005555500000dddddddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000005d5d5d5000005151515000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000555555555555005555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000800000900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700000000005000000000055500800009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0007700000000005555000000055d500888090000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000555555555555000005555550800800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+007007000000005555500000dddddddd809080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000005d5d5d5000005151515890080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000555555555555005555550888888880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000005555555555555500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000ddddddddddddddd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000555555555555555500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
