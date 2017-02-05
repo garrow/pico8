@@ -435,12 +435,13 @@ function draw_player_ui(tank)
     angle_color = active
   end
 
+  rectfill(0,0, 128, 6, white)
 
   -- spr(4, 0, 0)
   -- spr(4, tank.x - 20, tank.y -20)
   print("\x86p:"..tank.power, 128 - chars(13), base_y, power_color)
   print("\x86a:"..tank.tur_angle.."O", 128 - chars(7) - 1, base_y, angle_color)
-  print("\x87"..tank.health .."%", 128 - chars(20) - 1, base_y, skyblue)
+  print("\x87"..tank.health .."%", 128 - chars(20) - 1, base_y, inactive)
   -- print()
 end
 
@@ -466,7 +467,7 @@ function draw_healthbar(tank)
 end
 
 function draw_sky()
-  rectfill(0,0,128,128,7)
+  rectfill(0,0,128,128,skyblue)
 end
 
 function draw_terrain(t, starting_terrain)
