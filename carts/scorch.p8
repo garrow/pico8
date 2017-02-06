@@ -14,6 +14,7 @@ __lua__
 --
 -- done
 -- proper height based terrain destruction
+;
 black = 0
 darkblue = 1
 purple = 2
@@ -130,7 +131,7 @@ function make_terrain(something)
 end
 
 function build_circle_debug_table(cirlce)
-  debug_table = {}
+  local debug_table = {}
   for cp in all(circle) do
 
     add(debug_table, "x:"..cp.x .." y:" .. cp.y)
@@ -145,13 +146,13 @@ function _update()
 
   tanks = { player_tank }
 
-  firing = btn(4, 0) and btnp(4, 0)
+  local firing = btn(4, 0) and btnp(4, 0)
 
   -- if t % 3 != 0 then return end
 
   -- c_table = build_circle_debug_table(circle)
 
-  time_paused = btn(5, 0)
+  local time_paused = btn(5, 0)
 
   if explosion then
     if not time_paused then
@@ -614,7 +615,7 @@ function zspr(n,w,h,dx,dy,dz)
   dh = sh * dz
   sspr(sx,sy,sw,sh, dx,dy,dw,dh)
 end
-
+;
 __gfx__
 00000000000000000000000000000000800000000000000660000000666666665666666666666665000000000000000000000000000000000000000000000000
 00000000000000000000000000000000800000900000006666000000666666666566666666666656000000000000000000000000000000000000000000000000
