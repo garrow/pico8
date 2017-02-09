@@ -57,7 +57,8 @@ conf.bullet_speed = 4
 conf.gravity = 0.3
 conf.use_screenshake = true
 
-player_tank = nil
+player1_tank = nil
+player2_tank = nil
 
 
 
@@ -73,15 +74,18 @@ function _init()
 
   first_terrain = copy(terrain)
 
-  player_tank = make_tank()
+  player1_tank = make_tank()
 
 end
 
-function make_tank()
+function make_tank(name)
+  if not name then name = "bob" end
+
   local t = {}
   t.color = flr(rnd(15))
   t.x = 64
   t.y = 64
+  t.name = name
   t.tur_angle = 89 -- flr(rnd(90)) + 90
   t.input_type = "angle"
   t.power  = flr(rnd(conf.max_power))
@@ -127,7 +131,7 @@ function _update()
   t += 1
   t %= max_int
 
-  tanks = { player_tank }
+  tanks = { player1_tank }
 
   local firing = btn(4, 0) and btnp(4, 0)
 
@@ -141,12 +145,12 @@ function _update()
     if not time_paused then
       explosion   = tick_explosion(explosion)
       terrain     = apply_terrain_destruction(terrain, explosion)
-      player_tank = apply_tank_damage(player_tank, explosion)
+      player1_tank = apply_tank_damage(player1_tank, explosion)
     end
   else
     if firing and not bullet then
-      bullet = simple_shoot(player_tank)
-      -- explosion = spawn_explosion(player_tank.x, player_tank.y)
+      bullet = simple_shoot(player1_tank)
+      -- explosion = spawn_explosion(player1_tank.x, player1_tank.y)
     end
   end
 
@@ -172,57 +176,57 @@ function _update()
   end
 
   if btn(5, 0) and btnp(5,0) then
-    if player_tank.input_type == "power" then
-      player_tank.input_type = "angle"
+    if player1_tank.input_type == "power" then
+      player1_tank.input_type = "angle"
     else
-      if player_tank.input_type == "angle" then
-        player_tank.input_type = "power"
+      if player1_tank.input_type == "angle" then
+        player1_tank.input_type = "power"
       end
     end
   end
 
   if btn(0, 0) then
-    player_tank.x = max(0, player_tank.x - conf.tank_speed)
+    player1_tank.x = max(0, player1_tank.x - conf.tank_speed)
   end
   if btn(1, 0) then
-    player_tank.x = min(128, player_tank.x + conf.tank_speed)
+    player1_tank.x = min(128, player1_tank.x + conf.tank_speed)
   end
 
   -- gravity hax
 
-  tank_pos_on_terrain = 128 - conf.tank_height - terrain[""..player_tank.x]
-  actual_tank_pos = player_tank.y
+  tank_pos_on_terrain = 128 - conf.tank_height - terrain[""..player1_tank.x]
+  actual_tank_pos = player1_tank.y
 
   if actual_tank_pos < tank_pos_on_terrain then
-    player_tank.y += 1
+    player1_tank.y += 1
   end
 
   if actual_tank_pos > tank_pos_on_terrain then
-    player_tank.y -= 1
+    player1_tank.y -= 1
 
   end
 
 
 
-  -- foo =  { gat = 128 - terrain[""..player_tank.y],  tx = player_tank.x  }
+  -- foo =  { gat = 128 - terrain[""..player1_tank.y],  tx = player1_tank.x  }
 
-  if player_tank.input_type == "angle" then
+  if player1_tank.input_type == "angle" then
     if btn(2, 0) then
-      na = (player_tank.tur_angle + conf.turret_speed) % 360
-      player_tank.tur_angle = na
+      na = (player1_tank.tur_angle + conf.turret_speed) % 360
+      player1_tank.tur_angle = na
     end
     if btn(3, 0) then
-      na = (player_tank.tur_angle - conf.turret_speed) % 360
-      player_tank.tur_angle = na
+      na = (player1_tank.tur_angle - conf.turret_speed) % 360
+      player1_tank.tur_angle = na
     end
   end
 
-  if player_tank.input_type == "power" then
-    new_tank_power = player_tank.power
-    if btn(2, 0) then new_tank_power = player_tank.power + 1 end
-    if btn(3, 0) then new_tank_power = player_tank.power - 1 end
+  if player1_tank.input_type == "power" then
+    new_tank_power = player1_tank.power
+    if btn(2, 0) then new_tank_power = player1_tank.power + 1 end
+    if btn(3, 0) then new_tank_power = player1_tank.power - 1 end
 
-    player_tank.power = clamp(new_tank_power, 1, conf.max_power)
+    player1_tank.power = clamp(new_tank_power, 1, conf.max_power)
   end
 end
 
@@ -390,9 +394,9 @@ function _draw()
 
   draw_terrain(terrain, first_terrain)
   draw_bullet(bullet)
-  draw_tank(player_tank)
-  draw_healthbar(player_tank)
-  draw_player_ui(player_tank)
+  draw_tank(player1_tank)
+  draw_healthbar(player1_tank)
+  draw_player_ui(player1_tank)
 
 
 
@@ -436,7 +440,7 @@ function draw_player_ui(tank)
   local inactive = darkgrey
   local base_y = 1
 
-  if player_tank.input_type == "power" then
+  if player1_tank.input_type == "power" then
     power_color = active
     angle_color = inactive
   else
@@ -445,10 +449,11 @@ function draw_player_ui(tank)
   end
 
   rectfill(0,0, 128, 6, white)
+  print(tank.name, 1, base_y, inactive)
+  print("\x87"..tank.health .."%",     128 - chars(17) - 1, base_y, inactive)
+  print("pow "..tank.power,          128 - chars(12),     base_y, power_color)
 
-  print("\x86p:"..tank.power,          128 - chars(13),     base_y, power_color)
-  print("\x86a:"..tank.tur_angle.."o", 128 - chars(7) - 1,  base_y, angle_color)
-  print("\x87"..tank.health .."%",     128 - chars(20) - 1, base_y, inactive)
+  print("ang "..tank.tur_angle, 128 - chars(6) - 1,  base_y, angle_color)
   -- print("\x84\x84\x81\x81\x84\x84" ,     128 - chars(20) - 1, base_y + chars(15), lightgrey)
   -- print("\x84\x84\x81\x81\x84\x84" ,     128 - chars(20) , base_y + chars(15) +1, white)
   -- print()
@@ -497,7 +502,7 @@ function draw_terrain(t, starting_terrain)
     else
       decoration = debris
       -- shadow
-      -- rectfill(tx, 128 - orig_height, tx, 128, shadow)
+      rectfill(tx, 128 - orig_height, tx, 128, shadow)
     end
 
     -- main terrain
@@ -520,7 +525,7 @@ end
 function draw_bullet(bullet)
   if not bullet then return end
 
-  print_debug_table(bullet, 0, 5, 0)
+  print_debug_table(bullet, 1, 8, 0)
   circfill(bullet.x, bullet.y, 1, 14)
   for trail in all(bullet.trail) do
     circfill(trail.x, trail.y, 0, 0)
