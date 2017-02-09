@@ -289,7 +289,7 @@ function check_bullet_collision(b, trn, tanks)
     ty = 128 - terrain_height
 
     if by >= ty then
-        return spawn_explosion(bx, ty)
+        return spawn_explosion(bx, by)
     end
 end
 
