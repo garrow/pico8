@@ -2,10 +2,9 @@ pico-8 cartridge // http://www.pico-8.com
 version 10
 __lua__
 -- todo
--- tank damage
+-- disable tank turret when destroyed
 -- make the terrain gen more lifelike
 -- fix shot physics vertical angles
--- make shots land at the point of impact on the terrain, not the top.
 -- track tank movement against terrain better
 -- expand game world to wider than screen
 -- add edge of screen as danger. water pit or whatever
@@ -13,6 +12,8 @@ __lua__
 -- clouds & sky
 --
 -- done
+-- make shots land at the point of impact on the terrain, not the top.
+-- tank damage
 -- proper height based terrain destruction
 ;
 black = 0
@@ -55,6 +56,7 @@ conf.tank_height = 4
 conf.tank_health = 100
 conf.max_power = 99
 conf.bullet_speed = 4
+conf.starting_score = 2
 -- conf.bullet_accel = 0.1
 conf.gravity = 0.3
 conf.use_screenshake = true
@@ -69,48 +71,48 @@ function _init()
   -- tanks = {}
   t = 0
   sprite_anim_flip = false
+  game_over = false
 
   score = {}
   player_1 = {
     color = red,
-    name = "red"
+    name = "red",
+    score = conf.starting_score
   }
 
   player_2 = {
     color = brightgreen,
-    name = "green"
+    name = "green",
+    score = conf.starting_score
+
   }
 
-
-  start_game()
+  start_round()
 end
 
-function start_game()
+function start_round()
   bullet = nil
   explosion = nil
   terrain = make_terrain(40)
   first_terrain = copy(terrain)
 
-  player1_tank = make_tank(player_1.name, player_1.color)
-  player2_tank = make_tank(player_2.name, player_2.color)
+  player1_tank = make_tank(player_1.color)
+  player2_tank = make_tank(player_2.color)
   tanks = {player1_tank, player2_tank}
 end
 
 
-function make_tank(name, color)
-  if not name then name = "bob" end
+function make_tank(color)
   if not color then color = rand(15) end
   
-
   local t = {}
   t.color      = color
   t.x          = 64 + rand(60) - 30
   t.y          = 64 
-  t.name       = name
   t.tur_angle  = 89 -- flr(rnd(90)) + 90
   t.input_type = "angle"
   t.power      = rand(conf.max_power)
-  t.health     = flr(conf.tank_health / 2 +rnd(conf.tank_health / 2))
+  t.health     = 1
   t.destroyed  = false
   t.hitbox     = conf.tank_height
   -- temp
@@ -150,8 +152,18 @@ function build_circle_debug_table(cirlce)
   return debug_table
 end
 
-function test_game_over(tank)
+function test_round_over(tank)
   if tank.destroyed and btn(5, 0) then  
+    start_round()
+  end
+end
+
+function test_game_over(player)
+  if player.score < 1 then
+    game_over = true
+  end
+
+  if game_over and btn(5) and btn(4) then  
     _init()  
   end
 end
@@ -161,10 +173,20 @@ function _update()
   t %= max_int
 
 
-
   tanks = { player1_tank, player2_tank }
 
-  foreach(tanks, test_game_over)
+  foreach(tanks, test_round_over)
+
+  test_game_over(player_1)
+  test_game_over(player_2)
+
+  if game_over then
+    return
+  end
+
+
+
+
 
   local player1_firing = btn(4, 0) and btnp(4, 0)
   local player2_firing = btn(4, 1) and btnp(4, 1)
@@ -183,8 +205,8 @@ function _update()
     if not time_paused then
       explosion   = tick_explosion(explosion)
       terrain     = apply_terrain_destruction(terrain, explosion)
-      player1_tank = apply_tank_damage(player1_tank, explosion)
-      player2_tank = apply_tank_damage(player2_tank, explosion)
+      player1_tank = apply_tank_damage(player1_tank, explosion, player_1)
+      player2_tank = apply_tank_damage(player2_tank, explosion, player_2)
     end
   else
     if not bullet then
@@ -218,19 +240,6 @@ function _update()
     end
   end
 
-  -- if btn(5, 0) and btnp(5,0) then
-  --   if player1_tank.input_type == "power" then
-  --     player1_tank.input_type = "angle"
-  --   else
-  --     if player1_tank.input_type == "angle" then
-  --       player1_tank.input_type = "power"
-  --     end
-  --   end
-  -- end
-
-
-
-  
   move_player_tank(player1_tank, 0)
   move_player_tank(player2_tank, 1)
 
@@ -310,7 +319,6 @@ function spawn_explosion(x, y, size)
 
   return e
 end
-
 
 function tick_bullet(ob)
   -- allow bullets to go high, and come back down
@@ -402,9 +410,7 @@ function apply_terrain_destruction(t, e)
   return t
 end
 
-
-
-function apply_tank_damage(tank, exp)
+function apply_tank_damage(tank, exp, player)
   if not exp then return tank end
   if exp.final_damage == false then return tank end
 
@@ -416,13 +422,13 @@ function apply_tank_damage(tank, exp)
   if exp.size >= dist then
     tank.health = 0
     tank.destroyed = true
+    player.score -= 1
   end
   -- reduce health
   -- tank.health = tank.health - max(0, exp.size - dist)
 
   return tank
 end
-
 
 -- return a list of x coordinates the size of the circle at that point.
 function generate_circle_heights(r, x, y)
@@ -458,8 +464,8 @@ function _draw()
   foreach(tanks, draw_tank)
 
   -- foreach(tanks, draw_healthbar)
-  draw_player_ui(player1_tank)
-  draw_player_ui(player2_tank, 6)
+  draw_player_ui(player_1, player1_tank)
+  draw_player_ui(player_2, player2_tank, 6)
   -- foreach(tanks, draw_player_ui)
   
   -- draw_healthbar(player1_tank)
@@ -490,6 +496,10 @@ function _draw()
     camera(0,0)
   end
 
+  if game_over then
+    print("game over", 64 - chars(9)/2,40,0)
+    print("press \x97 + \x97 to restart", 64 - chars(8),  40 + chars(1) + 1, 0)
+end
   -- reset to default palette
   pal()
 end
@@ -501,7 +511,7 @@ function chars(numchar)
   return numchar * 5
 end
 
-function draw_player_ui(tank, frame_origin)
+function draw_player_ui(player, tank, frame_origin)
   -- tank.input_type
   if not frame_origin then frame_origin = 0 end
   local active = red
@@ -519,12 +529,14 @@ function draw_player_ui(tank, frame_origin)
   
 
   rectfill(0,frame_origin, 128, frame_origin + 6, white)
-  print(tank.name, 1, base_y, tank.color)
+  print(player.name, 1, base_y, tank.color)
   
+  print("\x92"..player.score,     128 - chars(20) - 1, base_y, inactive)
+  print("\x87"..tank.health,     128 - chars(17) - 1, base_y, inactive)
+
   if tank.destroyed then 
     print("<destroyed>", 128 - chars(12), base_y, red)
   else
-    print("\x87"..tank.health .."%",     128 - chars(17) - 1, base_y, inactive)
     print("pow "..tank.power,     128 - chars(12),     base_y, power_color)
     print("ang "..tank.tur_angle, 128 - chars(6) - 1,  base_y, angle_color)
   end
@@ -630,13 +642,22 @@ function draw_tank(tank)
   if tank.destroyed == true then 
     color = black
     -- TODO: Move to _draw or other fn
-    print("game over", 64 - chars(9)/2,40,0)
-    print("press \x97 to restart", 64 - chars(8),  40 + chars(1) + 1, 0)
+
     spr(flame_sprite, tank.x - tank.hitbox, 1+ tank.y - tank.hitbox*2, 1, 1, sprite_anim_flip)
     -- box_around(tank.x, tank.y, tank.hitbox)
   end
+  draw_round_over(tank)
 
   pal()
+end
+
+function draw_round_over(tank)
+  if game_over == true then return end
+  if tank.destroyed == false then return end
+
+  print("round over", 64 - chars(9)/2,40,0)
+  print("press \x97 to restart", 64 - chars(8),  40 + chars(1) + 1, 0)
+
 end
 
 ------------------------------------------------------------------------------------
