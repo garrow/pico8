@@ -70,7 +70,8 @@ function send_command
 }
 
 
-pico8_binary="${HOME}/Documents/p8workspace/pico8"
+#pico8_binary="${HOME}/Documents/p8workspace/pico8"
+pico8_binary="test/support/bin/pico8"
 
 output_workspace=${CIRCLE_ARTIFACTS:-~/tmp}
 
