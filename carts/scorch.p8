@@ -67,7 +67,7 @@ player2_tank = nil
 
 
 function _init()
-  printh("------scorch booted-----", "scorch.log", true)
+  -- printh("------scorch booted-----", "scorch.log", true)
   -- tanks = {}
   t = 0
   sprite_anim_flip = false
