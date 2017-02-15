@@ -33,6 +33,14 @@ greyblue = 13
 pink = 14
 tan = 15
 
+bt = {}
+bt.lt = 0
+bt.rt = 1
+bt.up = 2
+bt.dn = 3
+bt.ao = 4
+bt.bx = 5
+
 flame_sprite = 16
 
 
@@ -75,12 +83,14 @@ function _init()
 
   score = {}
   player_1 = {
+    id = 0,
     color = red,
     name = "red",
     score = conf.starting_score
   }
 
   player_2 = {
+    id = 1,
     color = brightgreen,
     name = "green",
     score = conf.starting_score
@@ -184,10 +194,6 @@ function _update()
     return
   end
 
-
-
-
-
   local player1_firing = btn(4, 0) and btnp(4, 0)
   local player2_firing = btn(4, 1) and btnp(4, 1)
 
@@ -240,33 +246,42 @@ function _update()
     end
   end
 
-  move_player_tank(player1_tank, 0)
-  move_player_tank(player2_tank, 1)
+  -- move_player_tank(player1_tank, player_1.id)
+  -- move_player_tank(player2_tank, player_2.id)
 
   tank_on_ground_hax(player1_tank, terrain)
   tank_on_ground_hax(player2_tank, terrain)
 
-  -- foo =  { gat = 128 - terrain[""..player1_tank.y],  tx = player1_tank.x  }
+  adjust_tank_angle(player1_tank, player_1)
+  adjust_tank_angle(player2_tank, player_2)
 
-  if player1_tank.input_type == "angle" then
-    if btn(2, 0) then
-      na = (player1_tank.tur_angle + conf.turret_speed) % 360
-      player1_tank.tur_angle = na
-    end
-    if btn(3, 0) then
-      na = (player1_tank.tur_angle - conf.turret_speed) % 360
-      player1_tank.tur_angle = na
-    end
-  end
+  adjust_tank_power(player1_tank, player_1)
+  adjust_tank_power(player2_tank, player_2)
+end
 
-  if player1_tank.input_type == "power" then
-    new_tank_power = player1_tank.power
-    if btn(2, 0) then new_tank_power = player1_tank.power + 1 end
-    if btn(3, 0) then new_tank_power = player1_tank.power - 1 end
+function adjust_tank_power(tank, player)
+  if tank.input_type == "power" or true then
+    new_tank_power = tank.power
+    if btn(bt.up, player.id) then new_tank_power = tank.power + 1 end
+    if btn(bt.dn, player.id) then new_tank_power = tank.power - 1 end
 
-    player1_tank.power = clamp(new_tank_power, 1, conf.max_power)
+    tank.power = clamp(new_tank_power, 1, conf.max_power)
   end
 end
+
+function adjust_tank_angle(tank, player)
+  if tank.input_type == "angle" then
+    if btn(bt.lt, player.id) then
+      na = (tank.tur_angle + conf.turret_speed) % 360
+      tank.tur_angle = na
+    end
+    if btn(bt.rt, player.id) then
+      na = (tank.tur_angle - conf.turret_speed) % 360
+      tank.tur_angle = na
+    end
+  end
+end
+
 
 function tank_on_ground_hax(tank, terrain)
   tank_pos_on_terrain = 128 - conf.tank_height - terrain[""..tank.x]
@@ -284,10 +299,10 @@ end
 function move_player_tank(tank, player_id)
   if tank.destroyed then return end
 
-  if btn(0, player_id) then
+  if btn(b.lt, player_id) then
     tank.x = max(0, tank.x - conf.tank_speed)
   end
-  if btn(1, player_id) then
+  if btn(b.rt, player_id) then
     tank.x = min(128, tank.x + conf.tank_speed)
   end
 end
