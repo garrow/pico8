@@ -33,22 +33,16 @@ function build_pico8_html
   cart_name=$(basename ${source_file})
 
 
+
   sleep 1
-  xte "str load ${cart_name}"
-  xte "key Return"
-  sleep 1
+
+  send_command "load ${cart_name}"
   send_command "run"
-  sleep 1
-  xte "key F7"
-  sleep 1
-  xte "key Escape"
-  sleep 1
+  send_key "F7"         # Take Screenshot for PNG
+  send_key "Escape"     # Exit running Game
+  # Export Cart
   send_command "save ${cart_name}.png"
   send_command "export ${cart_name}.html ${cart_name}"
-  #xte "str save ${source_file}.html"
-  #xte "key Return"
-
-
 
   sleep 1
 
@@ -61,12 +55,17 @@ function build_pico8_html
   return 
 }
 
+function send_key
+{
+  xte "key $1"
+  sleep 1
+}
+
 
 function send_command
 {
   xte "str $1"
-  xte "key Return"
-  sleep 1
+  send_key "Return"
 }
 
 
