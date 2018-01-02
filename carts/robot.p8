@@ -10,20 +10,44 @@ t=0
 player_one = 0
 clr = {black = 0}
 sky_depth = 44
+debug_color = 11
+draw_depth = 5
+
+b_left = 0
+b_right = 1
+b_up  = 2
+b_down = 3
+b_a = 4
+b_b = 5
+
+-- Colors
+
+sky = {
+  bg = 1,
+  fg = 8
+}
+
+function city_color(iter, height)
+  if draw_depth > 5 then
+    return iter % 16
+  else
+    return sky.bg
+  end
+end
 
 function add_ship()
   s = {
     moving = false,
-    facing = "left", 
-    sp=3, 
-    x = 40, 
-    y = 60, 
-    facing_sprites = { 
+    facing = "left",
+    sp=3,
+    x = 40,
+    y = 60,
+    facing_sprites = {
       left  = { 3, 4 },
       right = { 19, 20 },
       up    = { 21, 22 },
       down  = { 5, 6 }
-      } 
+      }
     }
 
   add(actors, s)
@@ -35,29 +59,10 @@ function _init()
   ship = add_ship()
   build_scenery()
 
-  -- ship = {
-  --   moving = false,
-  --   facing = "left", 
-  --   sp=3, 
-  --   x = 40, 
-  --   y = 60, 
-  --   facing_sprites = { 
-  --     left  = { 3, 4 },
-  --     right = { 19, 20 },
-  --     up    = { 21, 22 },
-  --     down  = { 5, 6 }
-  --     } 
-  --   }
-
     background = {}
     background.t = 0
     background.dx = 0
     background.dy = 0
-
-    get_player_direction = function()
-      return ship.direction
-    end
-
 
     grid_bg = {
 		color_a=12,
@@ -66,49 +71,63 @@ function _init()
 			w=127
 			n=15
 
-
-
-
-      -- if background.t == 0 then
-      --   background.t =1 
-      -- end
-
       background.t -= 0.65
-      -- background.dx += 0.65
-      -- background.dy += 0.65
-			
-
       offset_grid=function(bg, w, n, offset, current_color)
+        debugOut = {
+            z = 0,
+            y = 0,
+            v = 0,
+            bgdx = 0,
+            bgdy = 0
+        }
         for i=0,n do
+          if (i == 7 and debug == true) do
+            cc = debug_color
+          else
+            cc = current_color
+          end
           z= (i * n+bg.dy % n )
           y= w * n/z + 32
           -- Horiz (y)
-          line(0, y + offset, w, y + offset, current_color)
+          line(0, y + offset, w, y + offset, cc)
 
           v = i + bg.dx % n / n-n / 2
           -- vert (x)
-          line(v*9+64 + offset, 40, v*60+64 + offset, w, current_color)
+          line(v*9+64 + offset, 40, v*60+64 + offset, w, cc)
+
+          if (i == 7) do
+            debugOut.z = z
+            debugOut.y = y
+            debugOut.v = v
+            debugOut.bgdx = bg.dx
+            debugOut.bgdy = bg.dy
         end
       end
 
+        if debug == true then
+          print_debug_table(debugOut, 80, 60, debug_color)
+        end
+      end
 
       local current_color
-
       current_color = grid_bg.color_b
 
+      debug = false
+      if (draw_depth > 0) then
       -- Pink underlines first
       offset = -1
       offset_grid(background, w, n, offset, grid_bg.color_b)
 
       offset = 1
       offset_grid(background, w, n, offset, grid_bg.color_b)
+      end
 
+      debug = draw_depth > 5
       -- Blue overline on top.
       offset = 0
+      if (draw_depth > 1) then
       offset_grid(background, w, n, offset, grid_bg.color_a)
-
-      
-      
+      end
 		end
 	}
 
@@ -119,10 +138,10 @@ function character_sprite(character, time_point)
 
   if (time_point % 10 < 5) then
     new_sprite = animation_set[1]
-  else 
+  else
     new_sprite = animation_set[2]
   end
-  
+
   if (character.moving == false) then
     new_sprite = animation_set[1]
   end
@@ -141,55 +160,53 @@ function character_directional_movement(character, player_id)
 
   player_vel = scaleBetween(ship.y, 0.5, 1, sky_depth, 128)
 
-  buttons = 0
-  if btn(b_left, player_id) then buttons += 1 end
-  if btn(b_right, player_id) then buttons += 1 end
-  if btn(b_up, player_id) then buttons += 1 end
-  if btn(b_down, player_id) then buttons += 1 end
+  buttons = direction_buttons_pressed_count(player_id)
 
+  if buttons > 0 then new_moving = true end
   -- slow movement if two directions
   if buttons > 1 then player_vel /= 2 end
 
-  
-
-  if btn(0, player_id) then
+  if btn(b_left, player_id) then
     new_x = new_x - player_vel
     new_facing = "left"
-    new_moving = true
   end
 
-  if btn(1, player_id) then
+  if btn(b_right, player_id) then
     new_x = new_x + player_vel
     new_facing = "right"
-    new_moving = true
   end
 
-  if btn(2, player_id) then
+  if btn(b_up, player_id) then
     new_y = new_y - player_vel
     new_facing = "up"
-    new_moving = true
   end
 
-  if btn(3, player_id) then
+  if btn(b_down, player_id) then
     new_y = new_y + player_vel
     new_facing = "down"
-    new_moving = true
   end
-  
-  return { 
-    x = new_x, 
-    y = new_y, 
-    facing = new_facing, 
-    moving = new_moving 
+
+  return {
+    x = new_x,
+    y = new_y,
+    facing = new_facing,
+    moving = new_moving
     }
+end
+
+function clamp(v, mn, mx)
+  return max(mn, min(v, mx))
 end
 
 function _update()
   t=t+1
 
-  -- ship.sp = character_directional_movement(ship, t)
-  -- ship.sp = character_directional_movement(ship, t)
- 
+  -- Debug Draw Depth
+  new_draw_depth = draw_depth
+  if btnp(b_a, player_id) then new_draw_depth -= 1 end
+  if btnp(b_b, player_id) then new_draw_depth += 1 end
+  draw_depth = clamp(new_draw_depth, 0,6)
+
 
   new_ship_pos = character_directional_movement(ship, player_one)
   ship.sp = character_sprite(ship, t)
@@ -201,70 +218,40 @@ function _update()
 
   player_id = player_one
 
-  b_left = 0
-  b_right = 1
-  b_up  = 2
-  b_down = 3
-
   background_vel = 1
 
+  buttons = direction_buttons_pressed_count(player_id)
+
+  if buttons > 1 then background_vel /= 2 end
+
+  if btn(b_left, player_id)  then background.dx += background_vel  end
+  if btn(b_right, player_id) then background.dx -= background_vel  end
+  if btn(b_up, player_id)    then background.dy -= background_vel  end
+  if btn(b_down, player_id)  then background.dy += background_vel  end
+end
+
+-- Return a count of direction buttons pressed right now for this player
+function direction_buttons_pressed_count(player_id)
   buttons = 0
   if btn(b_left, player_id) then buttons += 1 end
   if btn(b_right, player_id) then buttons += 1 end
   if btn(b_up, player_id) then buttons += 1 end
   if btn(b_down, player_id) then buttons += 1 end
 
-  if buttons > 1 then background_vel /= 2 end
-
-
-  if btn(b_left, player_id)  then background.dx += background_vel  end
-  if btn(b_right, player_id) then background.dx -= background_vel  end
-  if btn(b_up, player_id)    then background.dy -= background_vel  end
-  if btn(b_down, player_id)  then background.dy += background_vel  end
-
-
-  -- if btn(4, player_one) then ship.sp = 1 end
-  -- if btn(5, player_one) then ship.sp = 0 end
-  
-  -- new_x = ship.x
-  -- new_y = ship.y
-
-  -- if btn(0) then
-  --   new_x = new_x - 1
-  -- end
-  -- if btn(1) then
-  --   new_x = new_x + 1
-  -- end
-
-  -- if btn(3) then
-  --   new_y = new_y + 1
-  -- end
-  -- if btn(2) then
-  --   new_y = new_y - 1
-  -- end
-
-
-  -- ship.x = new_x
-  -- ship.y = new_y
+  return buttons
 end
-
-
-
 
 function draw_sky()
   n = sky_depth
   for i=0,n do
     if i % 3 == 0 then
-      color = 8 
+      color = sky.fg
     else
-      color = 1
+      color = sky.bg
     end
-      line(0, i, 128, i, color)
-      -- line(0, i, 128, i, 8)
+    line(0, i, 128, i, color)
   end
-
 end
-
 
 function build_scenery()
   mheight = 24
@@ -275,68 +262,29 @@ function build_scenery()
     start = i * b_width
     building_height = rnd(mheight) + rnd(5) + 2
 
-    add(scenery, { 
+    add(scenery, {
       x1 = start,
       y1 = sky_depth - building_height,
       x2 = start + b_width,
       y2 = sky_depth,
-      color = 1
+      color = i
     })
   end
 
   return scenery
 end
 
-
+function draw_scenery()
+  foreach(scenery, draw_building)
+end
 
 function draw_building(building)
-  rectfill(b.x1, b.y1, b.x2, b.y2, b.color)
+  rectfill(building.x1, building.y1, building.x2, building.y2, city_color(building.color))
 end
-
-
-function draw_scenery()
-  -- mheight = 20
-  -- buildings = 16
-  -- b_width = 128 / buildings
-
-
-  foreach(scenery, 
-    function(b)
-      rectfill(b.x1, b.y1, b.x2, b.y2, b.color)
-
-    end
-  )
-
-  -- for 
-
-  -- for i=0,buildings do
-  --   start = i * 128/16
-  --   building_height = rnd(mheight)
-
-
-  --   rectfill(start, sky_depth - building_height, start + b_width, sky_depth, 1)
-  -- -- rectfill(50, sky_depth - 22, 100, sky_depth, 1)
-  -- -- rectfill(100, sky_depth - 16, 127, sky_depth, 1)
-
-
-  -- end
-
---    if (sget(level,6)>0) then
- 
---   local bgcol = sget(level,7)
---   pal(5,bgcol) pal(2,bgcol)
---   pal(13,sget(level,6)) 
---   mapdraw (0, 59, 0, 56, 16, 16, 0)
---  	pal()
---  end
-end
-
 
 function scaleBetween(unscaledNum, minAllowed, maxAllowed, min, max)
   return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
 end
-
-
 
 function scale_number_arb(min, max, scale_min, scale_max, x)
   -- ba = scale_max - scale_min
@@ -345,12 +293,12 @@ function scale_number_arb(min, max, scale_min, scale_max, x)
   -- maxmin = max - min
   -- a = scale_min
 
-  -- numerator = ba / xmin 
+  -- numerator = ba / xmin
   -- denominator = maxmin
 
 
 
-  -- return (numerator / denominator) + a 
+  -- return (numerator / denominator) + a
 
   return scaleBetween(x, scale_min, scale_max, min, max)
 end
@@ -361,24 +309,44 @@ end
 
 function _draw()
   cls()
-  -- spr(ship.sp, ship.x, ship.y)
-  grid_bg.draw()
-  draw_sky()
 
-  draw_scenery()
+  if draw_depth > 0 then
+    grid_bg.draw()
+  end
 
-  -- zspr(7, 2, 2, 28, 29, 3)
+  if draw_depth > 2 then
+    draw_sky()
+  end
+
+  if draw_depth > 3 then
+    draw_scenery()
+  end
 
   pal(4,13)
-  -- spr(ship.sp, ship.x, ship.y)
 
   if ship.y > sky_depth then
     scaled = scaleBetween(ship.y, 0.25, 4, sky_depth, 128)
+    scaled = 2
 
+    if draw_depth > 4 then
     zspr(ship.sp, 1,1, ship.x, ship.y, scaled)
+    end
     -- print(ship.y, ship.x, ship.y, 11)
     -- print("--")
     -- print(scale_number_arb(sky_depth,128, 1, 4, ship.y), 11)
+  end
+  -- print("dd")
+
+
+  print("D" .. draw_depth, 118,120,7)
+
+  -- Debug Original sprite
+  if draw_depth > 5 then
+    if (t % 10 < 5) then
+      zspr(1, 1,1, 60, 60, 2)
+    else
+      zspr(2, 1,1, 60, 60, 2)
+    end
   end
 
   pal()
@@ -402,6 +370,33 @@ function zspr(n,w,h,dx,dy,dz)
   dw = sw * dz
   dh = sh * dz
   sspr(sx,sy,sw,sh, dx,dy,dw,dh)
+end
+
+function print_debug_table(t, x_offset, y_offset, color)
+  if not x_offset then x_offset = 0 end
+  if not y_offset then y_offset = 30 end
+  if not color then color = 6 end
+
+  maxChars = 0
+  for k,_ in pairs(t) do
+    if #k > maxChars then
+      maxChars = #k
+    end
+  end
+
+
+  bos = 0
+  for k,v in pairs(t) do
+    if type(v) == "table" then
+      v = "_(table)"
+    end
+
+    if v == true then  v = "true" end
+    if v == false then v = "false" end
+
+    print(sub(k .. "         ", 0, maxChars+1) .. v, x_offset, y_offset+(bos*6), color)
+    bos += 1
+  end
 end
 
 
@@ -703,4 +698,3 @@ __music__
 00 41424344
 00 41424344
 00 41424344
-
